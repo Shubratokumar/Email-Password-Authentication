@@ -3,7 +3,14 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import app from "./firebase.init";
-import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  getAuth,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
 import { useState } from "react";
 
 const auth = getAuth(app);
@@ -14,7 +21,13 @@ function App() {
   const [validated, setValidated] = useState(false);
   const [error, setError] = useState("");
   const [registered, setRegistered] = useState(false);
+  const [success, setSuccess] = useState("");
+  const [login, setLogin] = useState("");
+  const [name, setName] = useState("");
 
+  const handleNameBlur = (e) =>{
+    setName(e.target.value);
+  }
   const handleEmailBlur = (e) => {
     setEmail(e.target.value);
   };
@@ -46,36 +59,82 @@ function App() {
         .then((result) => {
           const user = result.user;
           console.log(user);
-          setEmail("");
-          setPassword("");
+          verifyEmail();
+          setUserName();
+          setSuccess("Registered successfully!!!");
         })
         .catch((error) => {
           console.error(error);
           setError(error.message);
+          setSuccess("");
         });
-    } 
-    else {
+    } else {
       signInWithEmailAndPassword(auth, email, password)
-      .then(result =>{
-        const user = result.user;
-        console.log(user)
-      })
-      .catch(error =>{
-        console.error(error)
-        setError(error.message);
-      })
+        .then((result) => {
+          const user = result.user;
+          setEmail("");
+          setPassword("");
+          console.log(user);
+          setLogin("Successfully Log In !!!");
+        })
+        .catch((error) => {
+          console.error(error);
+          setError(error.message);
+          setLogin("");
+        });
     }
-
     event.preventDefault();
+  };
+
+  const setUserName = () =>{
+    updateProfile(auth.currentUser, {
+      displayName : name
+    })
+    .then(() => {
+      console.log("Updating User Name")
+    })
+    .catch(error => {
+      console.error(error)
+    })
+  }
+  const verifyEmail = () => {
+    sendEmailVerification(auth.currentUser)
+    .then(() => {
+      console.log("email verification send");
+    })
+    .catch(error => {
+      console.error(error)
+    })
+  };
+  const handlePasswordReset = () => {
+    sendPasswordResetEmail(auth, email)
+      .then(() => {
+        console.log("Password reset email sent!");
+      })
+      .catch((error) => {
+        console.error(error);
+      });
   };
 
   return (
     <div>
-      <div className="registration w-50 mx-auto mt-3 ">
+      <div className="registration w-50 mx-auto mt-5 ">
         <h2 className="text-info">
           Please {registered ? "Login" : "Register"} !!!{" "}
         </h2>
         <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
+          { !registered && <Form.Group className="mb-3" controlId="formBasicEmail">
+            <Form.Label>Your Name</Form.Label>
+            <Form.Control
+              required
+              onBlur={handleNameBlur}
+              type="text"
+              placeholder="Enter Your Name"
+            />
+            <Form.Control.Feedback type="invalid">
+              Please provide your name.
+            </Form.Control.Feedback>
+          </Form.Group> }
           <Form.Group className="mb-3" controlId="formBasicEmail">
             <Form.Label>Email address</Form.Label>
             <Form.Control
@@ -84,7 +143,6 @@ function App() {
               type="email"
               placeholder="Enter email"
             />
-
             <Form.Text className="text-muted">
               We'll never share your email with anyone else.
             </Form.Text>
@@ -111,7 +169,13 @@ function App() {
               label="Already registered?"
             />
           </Form.Group>
+          <p className="text-success">{success}</p>
+          <p className="text-info">{login}</p>
           <p className="text-danger">{error}</p>
+          <Button className="mb-3" onClick={handlePasswordReset} variant="link">
+            Forget Password?
+          </Button>
+          <br />
           <Button variant="primary" type="submit">
             {registered ? "Login" : "Register"}
           </Button>
